@@ -19,8 +19,11 @@ async def query(request: ChatRequest):
     # 1. Embed the question
     query_embedding = openai_service.embed_texts([request.question])[0]
 
-    # 2. Retrieve relevant chunks
-    matches = search_service.vector_search(query_embedding, top_k=request.top_k)
+    # 2. Retrieve relevant chunks — restricted to this user's own document
+    document_id = f"{request.user_id}-active-doc"
+    matches = search_service.vector_search(
+        query_embedding, top_k=request.top_k, document_id=document_id
+    )
 
     # 3. Generate a grounded answer
     context_chunks = [{"content": m["content"], "source": m["filename"]} for m in matches]

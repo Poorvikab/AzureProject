@@ -13,12 +13,17 @@ def _get_container_client():
     return blob_service_client.get_container_client(settings.AZURE_STORAGE_CONTAINER)
 
 
-def upload_file(file_bytes: bytes, original_filename: str, content_type: str) -> dict:
-    """Uploads a file to blob storage and returns its blob name + URL."""
+def upload_file(file_bytes: bytes, original_filename: str, content_type: str, user_id: str) -> dict:
+    """Uploads a file to blob storage and returns its blob name + URL.
+
+    Uses a fixed, per-user document_id so re-uploading always replaces the
+    same blob/document rather than creating an orphaned duplicate.
+    """
     container_client = _get_container_client()
 
     ext = original_filename.rsplit(".", 1)[-1] if "." in original_filename else "bin"
-    blob_name = f"{uuid.uuid4()}.{ext}"
+    document_id = f"{user_id}-active-doc"
+    blob_name = f"{document_id}.{ext}"
 
     container_client.upload_blob(
         name=blob_name,
@@ -31,6 +36,7 @@ def upload_file(file_bytes: bytes, original_filename: str, content_type: str) ->
 
     return {
         "blob_name": blob_name,
+        "document_id": document_id,
         "original_filename": original_filename,
         "url": blob_client.url,
         "content_type": content_type,

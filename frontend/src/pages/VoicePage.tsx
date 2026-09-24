@@ -113,8 +113,6 @@ export default function VoicePage() {
       });
 
       const data = response.data;
-
-      // Extract question defensively
       const question =
         data.transcribed_question ||
         data.transcription ||
@@ -123,7 +121,6 @@ export default function VoicePage() {
         data.prompt ||
         '';
 
-      // Extract answer defensively
       const answer =
         data.answer ||
         data.text ||
@@ -132,8 +129,6 @@ export default function VoicePage() {
         data.message ||
         (typeof data === 'string' ? data : '');
 
-      // Extract audio URL or base64 defensively
-            // Backend always returns raw base64 under `audio_base64` — no need to guess
       let audioSrc: string | undefined = undefined;
       if (typeof data.audio_base64 === 'string' && data.audio_base64.trim()) {
         audioSrc = `data:audio/mp3;base64,${data.audio_base64.trim()}`;
@@ -165,144 +160,117 @@ export default function VoicePage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 py-10">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Voice Query</h1>
-        <p className="text-xs text-zinc-400 mt-1">
-          Record your question using your microphone or upload an audio file to query your media.
-        </p>
-      </div>
-
-      {error && (
-        <div
-          role="alert"
-          className="mb-6 p-3.5 rounded-md bg-zinc-900 border border-red-900/60 text-red-400 text-xs flex items-start gap-2.5"
-        >
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span className="leading-relaxed">{error}</span>
+    <div className="page-shell">
+      <div className="page-shell-inner max-w-3xl py-8 sm:py-12">
+        <div className="mb-6">
+          <div className="kicker mb-3">Voice interface</div>
+          <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Voice query</h1>
+          <p className="mt-2 max-w-xl text-sm text-slate-300">
+            Record a question using your microphone or upload an audio file to query your media.
+          </p>
         </div>
-      )}
 
-      {/* Recording Control Panel */}
-      <div className="border border-zinc-800 rounded-lg p-8 bg-zinc-900/40 text-center mb-6">
-        <div className="flex flex-col items-center justify-center">
-          {isRecording ? (
-            <div className="space-y-4">
-              <div className="w-16 h-16 rounded-full bg-red-950 border border-red-700/80 flex items-center justify-center mx-auto text-red-400 animate-pulse">
-                <Mic className="w-7 h-7" />
+        {error && (
+          <div role="alert" className="status-banner error mb-6">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="glass-panel p-6 sm:p-8">
+          <div className="flex flex-col items-center justify-center text-center">
+            {isRecording ? (
+              <div className="space-y-5">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-rose-500/60 bg-rose-600/10 text-rose-200 shadow-[0_0_40px_rgba(244,63,94,0.3)] animate-pulse">
+                  <Mic className="h-8 w-8" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold uppercase tracking-[0.2em] text-rose-200">Recording audio</div>
+                  <div className="mt-2 font-mono text-sm text-slate-200">{formatSeconds(recordingDuration)}</div>
+                </div>
+                <button type="button" onClick={stopRecording} className="primary-button max-w-[220px] bg-gradient-to-r from-rose-500 to-orange-500 shadow-[0_20px_35px_rgba(244,63,94,0.28)]">
+                  <Square className="h-3.5 w-3.5 fill-current" />
+                  <span>Stop & Query</span>
+                </button>
               </div>
-              <div>
-                <div className="text-sm font-medium text-red-400">Recording Audio...</div>
-                <div className="text-xs font-mono tabular-nums text-zinc-400 mt-1">
-                  {formatSeconds(recordingDuration)}
+            ) : (
+              <div className="space-y-5">
+                <button
+                  type="button"
+                  onClick={startRecording}
+                  disabled={isProcessing}
+                  className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-slate-900/70 text-slate-100 shadow-[0_12px_30px_rgba(15,23,42,0.7)] transition-all duration-200 hover:border-cyan-300/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Start recording audio"
+                >
+                  <Mic className="h-8 w-8" />
+                </button>
+                <div>
+                  <div className="text-base font-medium text-white">
+                    {isProcessing ? 'Processing audio...' : 'Click to start recording'}
+                  </div>
+                  <div className="mt-2 text-sm text-slate-300">Speak clearly into your microphone</div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={stopRecording}
-                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-md transition-colors flex items-center gap-2 mx-auto cursor-pointer"
-              >
-                <Square className="w-3.5 h-3.5 fill-current" />
-                <span>Stop & Query</span>
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <button
-                type="button"
-                onClick={startRecording}
-                disabled={isProcessing}
-                className="w-16 h-16 rounded-full bg-zinc-900 border border-zinc-700 hover:border-zinc-500 flex items-center justify-center mx-auto text-zinc-200 hover:text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                aria-label="Start recording audio"
-              >
-                <Mic className="w-7 h-7" />
-              </button>
-              <div>
-                <div className="text-sm font-medium text-zinc-200">
-                  {isProcessing ? 'Processing Audio...' : 'Click to start recording'}
-                </div>
-                <div className="text-xs text-zinc-400 mt-1">
-                  Speak clearly into your microphone
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* File Picker Fallback */}
-        <div className="mt-8 pt-6 border-t border-zinc-800/80 flex items-center justify-center gap-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="audio/*,.wav,.mp3,.m4a,.webm,.ogg"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isRecording || isProcessing}
-            className="text-xs text-zinc-400 hover:text-zinc-200 inline-flex items-center gap-1.5 transition-colors disabled:opacity-40 cursor-pointer"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>Or upload an audio recording file</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Loading State */}
-      {isProcessing && (
-        <div className="border border-zinc-800 rounded-lg p-6 bg-zinc-900/30 text-center space-y-2">
-          <Loader2 className="w-5 h-5 animate-spin mx-auto text-zinc-400" />
-          <div className="text-xs text-zinc-300 font-medium">Transcribing audio and querying knowledge base...</div>
-        </div>
-      )}
-
-      {/* Result Display */}
-      {result && !isProcessing && (
-        <div className="border border-zinc-800 rounded-lg p-6 bg-zinc-900/40 space-y-5">
-          <h2 className="text-sm font-semibold text-zinc-200 border-b border-zinc-800 pb-3">
-            Voice Query Response
-          </h2>
-
-          {/* Transcribed Question */}
-          {result.question && (
-            <div>
-              <div className="text-xs font-medium text-zinc-400 mb-1">Transcribed Question</div>
-              <p className="text-sm text-zinc-200 bg-zinc-950 p-3 rounded border border-zinc-800/80">
-                "{result.question}"
-              </p>
-            </div>
-          )}
-
-          {/* Text Answer */}
-          <div>
-            <div className="text-xs font-medium text-zinc-400 mb-1">Answer</div>
-            <p className="text-sm text-zinc-100 bg-zinc-950 p-3.5 rounded border border-zinc-800/80 leading-relaxed whitespace-pre-wrap">
-              {result.answer}
-            </p>
+            )}
           </div>
 
-          {/* Audio Playback if present */}
-          {result.audioSrc && (
-            <div className="pt-2">
-              <div className="text-xs font-medium text-zinc-400 mb-2 flex items-center gap-1.5">
-                <Volume2 className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Audio Response</span>
-              </div>
-              <audio
-                ref={audioPlayerRef}
-                controls
-                autoPlay
-                src={result.audioSrc}
-                className="w-full h-10 rounded bg-zinc-900"
-              >
-                Your browser does not support audio playback.
-              </audio>
-            </div>
-          )}
+          <div className="mt-8 border-t border-white/10 pt-6">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*,.wav,.mp3,.m4a,.webm,.ogg"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isRecording || isProcessing}
+              className="secondary-button mx-auto disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Upload className="h-4 w-4" />
+              <span>Or upload an audio recording file</span>
+            </button>
+          </div>
         </div>
-      )}
+
+        {isProcessing && (
+          <div className="status-banner mt-6 justify-center">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Transcribing audio and querying knowledge base...</span>
+          </div>
+        )}
+
+        {result && (
+          <div className="glass-panel mt-6 p-5 sm:p-6">
+            <div className="flex items-center gap-2 text-sm font-medium text-cyan-200">
+              <Volume2 className="h-4 w-4" />
+              <span>Voice response</span>
+            </div>
+
+            {result.question && (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                <div className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-slate-300">Question</div>
+                <p className="mt-2 text-sm text-slate-100">{result.question}</p>
+              </div>
+            )}
+
+            {result.answer && (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                <div className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-slate-300">Answer</div>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-100">{result.answer}</p>
+              </div>
+            )}
+
+            {result.audioSrc && (
+              <div className="mt-4">
+                <audio controls src={result.audioSrc} className="w-full" />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+

@@ -34,7 +34,7 @@ export default function HomePage() {
       .get('/api/auth/me')
       .then(() => {
         if (isMounted) {
-          navigate('/chat', { replace: true });
+          navigate('/upload', { replace: true });
         }
       })
       .catch(() => {

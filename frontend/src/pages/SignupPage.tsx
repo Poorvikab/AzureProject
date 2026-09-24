@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, Sparkles, ShieldCheck } from 'lucide-react';
 import { apiClient, TOKEN_KEY, getErrorMessage } from '../api/client';
 
 export default function SignupPage() {
@@ -37,7 +37,7 @@ export default function SignupPage() {
       const token = response.data?.access_token;
       if (token) {
         localStorage.setItem(TOKEN_KEY, token);
-        navigate('/chat', { replace: true });
+        navigate('/upload', { replace: true });
       } else {
         setError('No access token received in server response.');
       }
@@ -49,115 +49,107 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-center items-center px-4 py-12">
-      <div className="w-full max-w-sm">
-        {/* Brand Header */}
-        <div className="text-center mb-8">
-          <Link
-            to="/"
-            className="text-xl font-semibold tracking-tight text-zinc-100 hover:text-zinc-300 transition-colors"
-          >
-            MediaSense
-          </Link>
-          <h1 className="text-xl font-medium mt-3 text-zinc-200">Create your account</h1>
-        </div>
-
-        {/* Error Notice */}
-        {error && (
-          <div
-            role="alert"
-            className="mb-5 p-3 rounded-md bg-zinc-900 border border-red-900/60 text-red-400 text-xs flex items-start gap-2.5"
-          >
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
-            <span className="leading-relaxed">{error}</span>
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label
-              htmlFor="username"
-              className="block text-xs font-medium text-zinc-400 mb-1.5"
+    <div className="page-shell auth-shell">
+      <div className="page-shell-inner max-w-md py-12">
+        <div className="glass-panel p-6 sm:p-8">
+          <div className="mb-8 text-center">
+            <div className="mb-5 flex justify-center">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5 text-rose-200 shadow-[0_0_30px_rgba(251,113,133,0.35)]">
+                <Sparkles className="h-5 w-5" />
+              </div>
+            </div>
+            <Link
+              to="/"
+              className="text-xl font-semibold tracking-tight text-white hover:text-slate-200 transition-colors"
             >
-              Username
-            </label>
-            <input
-              id="username"
-              name="username"
-              type="text"
-              autoComplete="username"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={isLoading}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-md text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors disabled:opacity-50"
-              placeholder="username"
-            />
+              MediaSense
+            </Link>
+            <h1 className="mt-4 text-2xl font-semibold text-white">Create your account</h1>
+            <p className="mt-2 text-sm text-slate-300">
+              Start with your profile, then upload your files to unlock a grounded digital twin.
+            </p>
           </div>
 
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-xs font-medium text-zinc-400 mb-1.5"
-            >
-              Email address
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-md text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors disabled:opacity-50"
-              placeholder="you@example.com"
-            />
+          {error && (
+            <div role="alert" className="status-banner error mb-5">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="username" className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-slate-300">
+                Username
+              </label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={isLoading}
+                className="field-input"
+                placeholder="username"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="email" className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-slate-300">
+                Email address
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                className="field-input"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-slate-300">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                className="field-input"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-200">
+              <ShieldCheck className="h-4 w-4" />
+              <span>Secure account with grounded document access</span>
+            </div>
+
+            <button type="submit" disabled={isLoading} className="primary-button mt-2">
+              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              <span>{isLoading ? 'Creating Account...' : 'Create Account'}</span>
+            </button>
+          </form>
+
+          <div className="mt-6 text-center text-sm text-slate-300">
+            Already have an account?{' '}
+            <Link to="/login" className="font-medium text-white underline decoration-white/30 underline-offset-4 hover:text-slate-100">
+              Sign in
+            </Link>
           </div>
-
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-xs font-medium text-zinc-400 mb-1.5"
-            >
-              Password (min 8 characters)
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-md text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors disabled:opacity-50"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full mt-2 py-2 px-4 bg-zinc-100 text-zinc-900 text-sm font-medium rounded-md hover:bg-zinc-200 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
-          >
-            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            <span>{isLoading ? 'Creating Account...' : 'Create Account'}</span>
-          </button>
-        </form>
-
-        {/* Login Link */}
-        <div className="text-center mt-6 text-xs text-zinc-400">
-          Already have an account?{' '}
-          <Link
-            to="/login"
-            className="text-zinc-200 hover:text-white underline underline-offset-4"
-          >
-            Sign in
-          </Link>
         </div>
       </div>
     </div>

@@ -33,7 +33,12 @@ async def voice_ask(
 
     # Step 2: text -> RAG answer (same pipeline as /api/chat/query)
     query_embedding = openai_service.embed_texts([question_text])[0]
-    matches = search_service.vector_search(query_embedding, top_k=5)
+
+    # Restricted to this user's own document, same as the chat route
+    document_id = f"{user_id}-active-doc"
+    matches = search_service.vector_search(
+        query_embedding, top_k=5, document_id=document_id
+    )
     context_chunks = [
         {"content": m["content"], "source": m["filename"]} for m in matches
     ]
@@ -46,8 +51,6 @@ async def voice_ask(
     audio_answer = await speech_service.text_to_speech(answer_text)
     audio_b64 = base64.b64encode(audio_answer).decode("ascii")
 
-    # One JSON body — matches the field names the frontend already reads
-    # (data.question, data.answer, data.audio_base64), no headers involved.
     return {
         "question": question_text,
         "answer": answer_text,
