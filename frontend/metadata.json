@@ -1,0 +1,6 @@
+{
+  "name": "MediaSense",
+  "description": "Smart Media Analysis Agent — RAG application for uploading documents and images and querying with text or voice grounded in your content.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
