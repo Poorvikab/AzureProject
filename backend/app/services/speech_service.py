@@ -6,7 +6,6 @@ Azure AI Speech via REST (no SDK needed, works cleanly in a stateless backend):
 
 import io
 import os
-import shutil
 import subprocess
 import tempfile
 import httpx
@@ -14,20 +13,14 @@ import imageio_ffmpeg
 from fastapi import HTTPException
 from app.config import settings
 
-# Some libraries still expect a runnable "ffprobe" on PATH (for example pydub).
-# imageio-ffmpeg bundles ffmpeg but not ffprobe, so we create a lightweight
-# compatibility alias in the same directory and prepend that directory to PATH.
-# This avoids deployment failures while keeping our real audio conversion logic
-# based on direct ffmpeg subprocess calls.
+# Some libraries still probe for ffmpeg/ffprobe via environment variables instead
+# of calling ffmpeg directly. imageio-ffmpeg bundles ffmpeg but not a separate
+# ffprobe executable, so we point the detection layer at the bundled binary itself.
+# This avoids the deployment error without creating a fake ffprobe binary on disk.
 _FFMPEG_EXE = imageio_ffmpeg.get_ffmpeg_exe()
-_FFMPEG_DIR = os.path.dirname(_FFMPEG_EXE)
-_FFPROBE_EXE = os.path.join(_FFMPEG_DIR, "ffprobe.exe" if os.name == "nt" else "ffprobe")
-
-if not os.path.exists(_FFPROBE_EXE):
-    shutil.copyfile(_FFMPEG_EXE, _FFPROBE_EXE)
-    os.chmod(_FFPROBE_EXE, 0o755)
-
-os.environ["PATH"] = _FFMPEG_DIR + os.pathsep + os.environ.get("PATH", "")
+os.environ.setdefault("FFMPEG_BINARY", _FFMPEG_EXE)
+os.environ.setdefault("FFPROBE_BINARY", _FFMPEG_EXE)
+os.environ["PATH"] = os.path.dirname(_FFMPEG_EXE) + os.pathsep + os.environ.get("PATH", "")
 
 
 def _stt_url() -> str:
