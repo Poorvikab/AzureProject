@@ -6,7 +6,7 @@ app = FastAPI(title="Smart Media Analysis Agent - Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten this to your actual frontend URL later
+    allow_origins=["https://black-beach-00a2ed100.6.azurestaticapps.net"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
