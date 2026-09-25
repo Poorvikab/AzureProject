@@ -6,25 +6,22 @@ Azure AI Speech via REST (no SDK needed, works cleanly in a stateless backend):
 
 import io
 import os
+import subprocess
 import tempfile
 import httpx
 import imageio_ffmpeg
-from pydub import AudioSegment
 from fastapi import HTTPException
 from app.config import settings
 
-# Point pydub's ffmpeg (encode/decode) binary at the one bundled inside
-# imageio-ffmpeg, so no system-level ffmpeg install is required.
+# We deliberately do NOT use pydub's AudioSegment.from_file() for decoding.
+# pydub internally calls a function that looks for a binary literally named
+# "ffprobe" on the system PATH -- this lookup ignores AudioSegment.converter
+# entirely, and imageio-ffmpeg only bundles "ffmpeg", not "ffprobe". So no
+# matter how AudioSegment is configured, pydub still fails with
+# "No such file or directory: 'ffprobe'" on this environment.
+# Instead, we call ffmpeg directly via subprocess, which only needs the
+# single ffmpeg binary that imageio-ffmpeg already provides.
 _FFMPEG_EXE = imageio_ffmpeg.get_ffmpeg_exe()
-AudioSegment.converter = _FFMPEG_EXE
-AudioSegment.ffmpeg = _FFMPEG_EXE
-# NOTE: imageio-ffmpeg only bundles `ffmpeg`, not a real `ffprobe` binary,
-# so we deliberately don't point AudioSegment.ffprobe at it (ffmpeg doesn't
-# understand ffprobe's flags, so that would just fail a different way).
-# Instead, _convert_to_wav always gives pydub a real file on disk rather
-# than an in-memory BytesIO object -- pydub only shells out to ffprobe
-# when it's handed an in-memory stream, so writing to a temp file first
-# avoids the ffprobe call entirely.
 
 
 def _stt_url() -> str:
@@ -43,9 +40,8 @@ def _convert_to_wav(audio_bytes: bytes, content_type: str | None = None) -> byte
     Converts any browser/mobile-recorded audio (webm, ogg, mp4, m4a, mp3, etc.)
     into 16kHz mono PCM WAV, which Azure's STT REST endpoint handles most reliably.
 
-    We write the incoming bytes to a temp file (rather than passing a BytesIO
-    object directly) and pass an explicit format hint, so pydub decodes
-    straight through ffmpeg without ever needing ffprobe.
+    Calls ffmpeg directly via subprocess (bypassing pydub's decoding layer,
+    which requires a separate "ffprobe" binary we don't have available).
     """
     format_hint = "webm"  # sensible default for browser MediaRecorder output
     if content_type:
@@ -61,27 +57,49 @@ def _convert_to_wav(audio_bytes: bytes, content_type: str | None = None) -> byte
         elif "webm" in ct:
             format_hint = "webm"
 
-    tmp_path = None
+    in_path = None
+    out_path = None
     try:
-        with tempfile.NamedTemporaryFile(suffix=f".{format_hint}", delete=False) as tmp:
-            tmp.write(audio_bytes)
-            tmp_path = tmp.name
+        with tempfile.NamedTemporaryFile(suffix=f".{format_hint}", delete=False) as tmp_in:
+            tmp_in.write(audio_bytes)
+            in_path = tmp_in.name
 
-        audio = AudioSegment.from_file(tmp_path, format=format_hint)
+        out_fd, out_path = tempfile.mkstemp(suffix=".wav")
+        os.close(out_fd)
+
+        cmd = [
+            _FFMPEG_EXE,
+            "-y",                 # overwrite output
+            "-i", in_path,        # input file
+            "-ar", "16000",       # 16kHz sample rate
+            "-ac", "1",           # mono
+            "-sample_fmt", "s16", # 16-bit PCM
+            out_path,
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, timeout=30)
+
+        if result.returncode != 0:
+            stderr_text = result.stderr.decode(errors="ignore")
+            raise RuntimeError(f"ffmpeg failed: {stderr_text[-500:]}")
+
+        with open(out_path, "rb") as f:
+            wav_bytes = f.read()
+
+        if not wav_bytes:
+            raise RuntimeError("ffmpeg produced an empty output file")
+
+        return wav_bytes
+
     except Exception as exc:
         raise HTTPException(
             status_code=422,
             detail=f"Could not read the uploaded audio file. It may be corrupted or in an unsupported format: {exc}",
         )
     finally:
-        if tmp_path and os.path.exists(tmp_path):
-            os.remove(tmp_path)
-
-    audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)  # 16-bit PCM
-
-    out_buffer = io.BytesIO()
-    audio.export(out_buffer, format="wav")
-    return out_buffer.getvalue()
+        for p in (in_path, out_path):
+            if p and os.path.exists(p):
+                os.remove(p)
 
 
 async def speech_to_text(audio_bytes: bytes, content_type: str | None = None) -> str:
