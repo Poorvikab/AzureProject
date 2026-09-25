@@ -13,7 +13,7 @@ def _get_container_client():
     return blob_service_client.get_container_client(settings.AZURE_STORAGE_CONTAINER)
 
 
-def upload_file(file_bytes: bytes, original_filename: str, content_type: str, user_id: str) -> dict:
+def upload_file(file_bytes: bytes, original_filename: str, content_type: str, user_id: str = "demo-user") -> dict:
     """Uploads a file to blob storage and returns its blob name + URL.
 
     Uses a fixed, per-user document_id so re-uploading always replaces the
