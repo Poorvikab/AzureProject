@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, AlertCircle, AlertTriangle, FileText, Image as ImageIcon, Loader2, ArrowRight } from 'lucide-react';
-import { apiClient, getErrorMessage, setHasUploadedData } from '../api/client';
+import { apiClient, getCurrentUserId, getErrorMessage, setHasUploadedData } from '../api/client';
 
 interface ImageUploadResult {
   kind: 'image';
@@ -80,6 +80,10 @@ export default function UploadPage() {
 
     const formData = new FormData();
     formData.append('file', selectedFile);
+    const currentUserId = getCurrentUserId();
+    if (currentUserId) {
+      formData.append('user_id', currentUserId);
+    }
 
     const isImg = isImageFile(selectedFile);
     const endpoint = isImg ? '/api/vision/upload' : '/api/documents/upload';

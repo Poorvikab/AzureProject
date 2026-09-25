@@ -2,6 +2,7 @@ import axios, { AxiosError } from 'axios';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL;
 export const TOKEN_KEY = 'access_token';
+export const USER_ID_KEY = 'user_id';
 export const HAS_UPLOADED_KEY = 'has_uploaded_data';
 
 export function getHasUploadedData(): boolean {
@@ -10,6 +11,18 @@ export function getHasUploadedData(): boolean {
 
 export function setHasUploadedData(hasUploaded: boolean): void {
   localStorage.setItem(HAS_UPLOADED_KEY, String(hasUploaded));
+}
+
+export function getCurrentUserId(): string | undefined {
+  return localStorage.getItem(USER_ID_KEY) || undefined;
+}
+
+export function setCurrentUser(user: { id?: string } | null | undefined): void {
+  if (user?.id) {
+    localStorage.setItem(USER_ID_KEY, user.id);
+    return;
+  }
+  localStorage.removeItem(USER_ID_KEY);
 }
 
 export const apiClient = axios.create({

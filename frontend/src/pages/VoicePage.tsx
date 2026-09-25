@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic, Square, Upload, Loader2, AlertCircle, Volume2 } from 'lucide-react';
-import { apiClient, getErrorMessage } from '../api/client';
+import { apiClient, getCurrentUserId, getErrorMessage } from '../api/client';
 
 interface VoiceResponseState {
   question?: string;
@@ -104,6 +104,10 @@ export default function VoicePage() {
 
     const formData = new FormData();
     formData.append('file', file);
+    const currentUserId = getCurrentUserId();
+    if (currentUserId) {
+      formData.append('user_id', currentUserId);
+    }
 
     try {
       const response = await apiClient.post('/api/voice/ask', formData, {

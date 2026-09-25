@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, AlertCircle, Sparkles, ShieldCheck } from 'lucide-react';
-import { apiClient, TOKEN_KEY, getErrorMessage } from '../api/client';
+import { apiClient, TOKEN_KEY, getErrorMessage, setCurrentUser } from '../api/client';
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -37,6 +37,7 @@ export default function SignupPage() {
       const token = response.data?.access_token;
       if (token) {
         localStorage.setItem(TOKEN_KEY, token);
+        setCurrentUser(response.data?.user);
         navigate('/upload', { replace: true });
       } else {
         setError('No access token received in server response.');

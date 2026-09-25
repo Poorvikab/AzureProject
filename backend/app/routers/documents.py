@@ -1,4 +1,5 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
+from app.dependencies import get_current_user
 from app.services import storage_service, document_service, openai_service, search_service
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -13,15 +14,17 @@ ALLOWED_TYPES = {
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    user_id: str = Form("demo-user"),   # same default/pattern as ChatRequest.user_id
+    user_id: str | None = Form(None),
+    current_user: dict = Depends(get_current_user),
 ):
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.content_type}")
 
     file_bytes = await file.read()
+    resolved_user_id = current_user["id"] if current_user else (user_id or "demo-user")
 
     # 1. Store the raw file, tied to this user
-    blob_info = storage_service.upload_file(file_bytes, file.filename, file.content_type, user_id=user_id)
+    blob_info = storage_service.upload_file(file_bytes, file.filename, file.content_type, user_id=resolved_user_id)
     document_id = blob_info["document_id"]
 
     # 2. Extract text
