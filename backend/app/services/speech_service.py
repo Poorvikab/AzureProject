@@ -5,21 +5,26 @@ Azure AI Speech via REST (no SDK needed, works cleanly in a stateless backend):
 """
 
 import io
+import os
+import tempfile
 import httpx
 import imageio_ffmpeg
 from pydub import AudioSegment
 from fastapi import HTTPException
 from app.config import settings
 
-# Point pydub at the ffmpeg binary bundled inside imageio-ffmpeg,
-# so no system-level ffmpeg/ffprobe install or PATH setup is required.
-# pydub uses .converter for encode/decode and .ffprobe separately for
-# reading file metadata before decoding — both need to be set, or pydub
-# will still try to shell out to a system "ffprobe" binary that doesn't exist.
+# Point pydub's ffmpeg (encode/decode) binary at the one bundled inside
+# imageio-ffmpeg, so no system-level ffmpeg install is required.
 _FFMPEG_EXE = imageio_ffmpeg.get_ffmpeg_exe()
 AudioSegment.converter = _FFMPEG_EXE
 AudioSegment.ffmpeg = _FFMPEG_EXE
-AudioSegment.ffprobe = _FFMPEG_EXE
+# NOTE: imageio-ffmpeg only bundles `ffmpeg`, not a real `ffprobe` binary,
+# so we deliberately don't point AudioSegment.ffprobe at it (ffmpeg doesn't
+# understand ffprobe's flags, so that would just fail a different way).
+# Instead, _convert_to_wav always gives pydub a real file on disk rather
+# than an in-memory BytesIO object -- pydub only shells out to ffprobe
+# when it's handed an in-memory stream, so writing to a temp file first
+# avoids the ffprobe call entirely.
 
 
 def _stt_url() -> str:
@@ -38,9 +43,9 @@ def _convert_to_wav(audio_bytes: bytes, content_type: str | None = None) -> byte
     Converts any browser/mobile-recorded audio (webm, ogg, mp4, m4a, mp3, etc.)
     into 16kHz mono PCM WAV, which Azure's STT REST endpoint handles most reliably.
 
-    We explicitly pass a format hint to pydub/ffmpeg based on the incoming
-    content type, so decoding doesn't depend on ffprobe auto-detecting the
-    container format from file content alone.
+    We write the incoming bytes to a temp file (rather than passing a BytesIO
+    object directly) and pass an explicit format hint, so pydub decodes
+    straight through ffmpeg without ever needing ffprobe.
     """
     format_hint = "webm"  # sensible default for browser MediaRecorder output
     if content_type:
@@ -56,13 +61,21 @@ def _convert_to_wav(audio_bytes: bytes, content_type: str | None = None) -> byte
         elif "webm" in ct:
             format_hint = "webm"
 
+    tmp_path = None
     try:
-        audio = AudioSegment.from_file(io.BytesIO(audio_bytes), format=format_hint)
+        with tempfile.NamedTemporaryFile(suffix=f".{format_hint}", delete=False) as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = tmp.name
+
+        audio = AudioSegment.from_file(tmp_path, format=format_hint)
     except Exception as exc:
         raise HTTPException(
             status_code=422,
             detail=f"Could not read the uploaded audio file. It may be corrupted or in an unsupported format: {exc}",
         )
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
     audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)  # 16-bit PCM
 
