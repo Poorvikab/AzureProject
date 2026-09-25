@@ -494,7 +494,7 @@ export default function HomePage() {
             },
             {
               q: 'Where does the backend run?',
-              a: 'The backend runs on FastAPI at http://127.0.0.1:8000. All authenticated API calls attach your JWT Bearer token and refresh seamlessly.',
+              a: 'The backend runs on the configured FastAPI base URL. All authenticated API calls attach your JWT Bearer token and refresh seamlessly.',
             },
           ].map((item, idx) => (
             <div
