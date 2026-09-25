@@ -12,8 +12,14 @@ from fastapi import HTTPException
 from app.config import settings
 
 # Point pydub at the ffmpeg binary bundled inside imageio-ffmpeg,
-# so no system-level ffmpeg install or PATH setup is required.
-AudioSegment.converter = imageio_ffmpeg.get_ffmpeg_exe()
+# so no system-level ffmpeg/ffprobe install or PATH setup is required.
+# pydub uses .converter for encode/decode and .ffprobe separately for
+# reading file metadata before decoding — both need to be set, or pydub
+# will still try to shell out to a system "ffprobe" binary that doesn't exist.
+_FFMPEG_EXE = imageio_ffmpeg.get_ffmpeg_exe()
+AudioSegment.converter = _FFMPEG_EXE
+AudioSegment.ffmpeg = _FFMPEG_EXE
+AudioSegment.ffprobe = _FFMPEG_EXE
 
 
 def _stt_url() -> str:
@@ -33,8 +39,8 @@ def _convert_to_wav(audio_bytes: bytes, content_type: str | None = None) -> byte
     into 16kHz mono PCM WAV, which Azure's STT REST endpoint handles most reliably.
 
     We explicitly pass a format hint to pydub/ffmpeg based on the incoming
-    content type, so it doesn't need ffprobe to auto-detect the format
-    (we only have ffmpeg available via imageio-ffmpeg, not ffprobe).
+    content type, so decoding doesn't depend on ffprobe auto-detecting the
+    container format from file content alone.
     """
     format_hint = "webm"  # sensible default for browser MediaRecorder output
     if content_type:
