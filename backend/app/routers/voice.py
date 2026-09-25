@@ -6,7 +6,8 @@ all in one JSON response.
 """
 
 import base64
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
+from app.dependencies import get_current_user
 from app.services import speech_service, openai_service, search_service, cosmos_service
 
 router = APIRouter(prefix="/api/voice", tags=["voice"])
@@ -15,10 +16,12 @@ router = APIRouter(prefix="/api/voice", tags=["voice"])
 @router.post("/ask")
 async def voice_ask(
     file: UploadFile = File(...),
-    user_id: str = Form("demo-user"),
+    user_id: str | None = Form(None),
     conversation_id: str = Form("default"),
+    current_user: dict = Depends(get_current_user),
 ):
     audio_bytes = await file.read()
+    resolved_user_id = current_user["id"] if current_user else (user_id or "demo-user")
 
     # Step 1: speech -> text
     question_text = await speech_service.speech_to_text(
@@ -35,7 +38,7 @@ async def voice_ask(
     query_embedding = openai_service.embed_texts([question_text])[0]
 
     # Restricted to this user's own document, same as the chat route
-    document_id = f"{user_id}-active-doc"
+    document_id = f"{resolved_user_id}-active-doc"
     matches = search_service.vector_search(
         query_embedding, top_k=5, document_id=document_id
     )
@@ -45,7 +48,7 @@ async def voice_ask(
     answer_text = openai_service.generate_answer(question_text, context_chunks)
 
     sources = list({m["filename"] for m in matches})
-    cosmos_service.save_turn(user_id, conversation_id, question_text, answer_text, sources)
+    cosmos_service.save_turn(resolved_user_id, conversation_id, question_text, answer_text, sources)
 
     # Step 3: text -> speech
     audio_answer = await speech_service.text_to_speech(answer_text)

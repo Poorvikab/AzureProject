@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, AlertCircle, FileText, ChevronDown, ChevronRight } from 'lucide-react';
-import { apiClient, getErrorMessage } from '../api/client';
+import { apiClient, getCurrentUserId, getErrorMessage } from '../api/client';
 
 interface SourceItem {
   filename?: string;
@@ -90,6 +90,7 @@ export default function ChatPage() {
     try {
       const response = await apiClient.post('/api/chat/query', {
         question: trimmed,
+        user_id: getCurrentUserId() || 'demo-user',
       });
 
       const data = response.data;
