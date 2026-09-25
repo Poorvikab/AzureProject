@@ -9,18 +9,9 @@ import os
 import subprocess
 import tempfile
 import httpx
-import imageio_ffmpeg
 from fastapi import HTTPException
 from app.config import settings
-
-# Some libraries still probe for ffmpeg/ffprobe via environment variables instead
-# of calling ffmpeg directly. imageio-ffmpeg bundles ffmpeg but not a separate
-# ffprobe executable, so we point the detection layer at the bundled binary itself.
-# This avoids the deployment error without creating a fake ffprobe binary on disk.
-_FFMPEG_EXE = imageio_ffmpeg.get_ffmpeg_exe()
-os.environ.setdefault("FFMPEG_BINARY", _FFMPEG_EXE)
-os.environ.setdefault("FFPROBE_BINARY", _FFMPEG_EXE)
-os.environ["PATH"] = os.path.dirname(_FFMPEG_EXE) + os.pathsep + os.environ.get("PATH", "")
+from app.services.ffmpeg_setup import FFMPEG_PATH
 
 
 def _stt_url() -> str:
@@ -67,7 +58,7 @@ def _convert_to_wav(audio_bytes: bytes, content_type: str | None = None) -> byte
         os.close(out_fd)
 
         cmd = [
-            _FFMPEG_EXE,
+            FFMPEG_PATH,
             "-y",                 # overwrite output
             "-i", in_path,        # input file
             "-ar", "16000",       # 16kHz sample rate
